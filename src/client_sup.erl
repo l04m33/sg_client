@@ -1,5 +1,5 @@
 
--module(sg_client_sup).
+-module(client_sup).
 
 -behaviour(supervisor).
 
@@ -24,7 +24,5 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, {{one_for_one, 5, 10}, 
-          [?CHILD(client_sup, supervisor),
-           ?CHILD(client_spawner, worker)]}}.
+    {ok, {{one_for_one, 5, 10}, []}}.
 
