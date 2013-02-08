@@ -1,4 +1,5 @@
 *.swp
 *.beam
 *.app
+rel/sg_client
 
