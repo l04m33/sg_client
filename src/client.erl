@@ -15,6 +15,8 @@
 %% gen_fsm Function Exports
 %% ------------------------------------------------------------------
 
+-export([wait_for_login_reply/2]).
+
 -export([init/1, handle_event/3,
          handle_sync_event/4, handle_info/3, terminate/3,
          code_change/4]).
@@ -54,6 +56,11 @@ init([ID, ServerIP, ServerPort]) ->
     {ok, idle, NState}.
 
 
+wait_for_login_reply(timeout, State) ->
+    self() ! {stop, login_timed_out},
+    {next_state, disconnected, State}.
+
+
 handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.
 
@@ -81,7 +88,7 @@ handle_info(login, connected, State) ->
     Account = State#state.player_account,
     Packet = pt:write(10000, Account),
     sender:send(Packet),
-    {next_state, wait_for_login_reply, State};
+    {next_state, wait_for_login_reply, State, 5000};
 
 handle_info({tcp, _Socket, InPacket}, wait_for_login_reply, State) ->
     {ok, {Stat, PlayerID}} = pt:read(10000, InPacket),

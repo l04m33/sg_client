@@ -71,5 +71,5 @@ write(10003, _NoUse) ->
 
 str_md5(L) ->
     MD5Bin = erlang:md5(L),
-    << <<(list_to_binary(io_lib:format("~2.16.0b", [N])))/binary>> || <<N:8>> <= MD5Bin >>.
+    list_to_binary([io_lib:format("~2.16.0b",[N]) || N <- binary_to_list(MD5Bin)]).
 
