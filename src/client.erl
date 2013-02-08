@@ -1,5 +1,5 @@
--module(client_spawner).
--behaviour(gen_server).
+-module(client).
+-behaviour(gen_fsm).
 -define(SERVER, ?MODULE).
 
 %% ------------------------------------------------------------------
@@ -9,47 +9,47 @@
 -export([start_link/0]).
 
 %% ------------------------------------------------------------------
-%% gen_server Function Exports
+%% gen_fsm Function Exports
 %% ------------------------------------------------------------------
 
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
-
--record(state, {
-    id_seq = 0}).
+-export([init/1, state_name/2, state_name/3, handle_event/3,
+         handle_sync_event/4, handle_info/3, terminate/3,
+         code_change/4]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
 
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_fsm:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% ------------------------------------------------------------------
-%% gen_server Function Definitions
+%% gen_fsm Function Definitions
 %% ------------------------------------------------------------------
 
-init([]) ->
-    {ok, #state{}}.
+init(_Args) ->
+    {ok, initial_state_name, initial_state}.
 
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+state_name(_Event, State) ->
+    {next_state, state_name, State}.
 
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+state_name(_Event, _From, State) ->
+    {reply, ok, state_name, State}.
 
-handle_info({spawn_client, ServerIP, ServerPort}, State) ->
-    ID = State#state.id_seq + 1,
-    supervisor:start_child(client_sup, 
-                           {ID, {client, start_link, [ServerIP, ServerPort]}, 
-                            transient, 5000, worker, [client]}),
-    {noreply, State}.
+handle_event(_Event, StateName, State) ->
+    {next_state, StateName, State}.
 
-terminate(_Reason, _State) ->
+handle_sync_event(_Event, _From, StateName, State) ->
+    {reply, ok, StateName, State}.
+
+handle_info(_Info, StateName, State) ->
+    {next_state, StateName, State}.
+
+terminate(_Reason, _StateName, _State) ->
     ok.
 
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+code_change(_OldVsn, StateName, State, _Extra) ->
+    {ok, StateName, State}.
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
