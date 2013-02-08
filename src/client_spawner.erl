@@ -2,11 +2,13 @@
 -behaviour(gen_server).
 -define(SERVER, ?MODULE).
 
+-include("log.hrl").
+
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/0]).
+-export([start_link/0, spawn_client/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -25,11 +27,16 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+spawn_client(ServerIP, ServerPort) ->
+    ?SERVER ! {spawn_client, ServerIP, ServerPort},
+    ok.
+
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 
 init([]) ->
+    erlang:process_flag(trap_exit, true),
     {ok, #state{}}.
 
 handle_call(_Request, _From, State) ->
@@ -40,10 +47,11 @@ handle_cast(_Msg, State) ->
 
 handle_info({spawn_client, ServerIP, ServerPort}, State) ->
     ID = State#state.id_seq + 1,
+    ?I("Spawning client, ID = ~w", [ID]),
     supervisor:start_child(client_sup, 
-                           {ID, {client, start_link, [ServerIP, ServerPort]}, 
+                           {ID, {client, start_link, [ID, ServerIP, ServerPort]}, 
                             transient, 5000, worker, [client]}),
-    {noreply, State}.
+    {noreply, State#state{id_seq = ID}}.
 
 terminate(_Reason, _State) ->
     ok.
