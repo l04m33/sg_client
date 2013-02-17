@@ -44,7 +44,10 @@ read(10002, <<Stat:8, PlayerID:32>>) ->
 read(10003, <<RoleID:32, Rest/binary>>) ->
 	{Name, Bin} = read_string(Rest),
 	<<SceneID:16, X:16, Y:16, _/binary>> = Bin,
-	{ok, {RoleID, Name, SceneID, X, Y}}.
+	{ok, {RoleID, Name, SceneID, X, Y}};
+
+read(guard, _) ->
+    guard.
 
 
 write(10000, Account) ->
@@ -67,7 +70,20 @@ write(10002, {RoleID, RoleName}) ->
     pack(10002, Payload);
 
 write(10003, _NoUse) ->
-    pack(10003, <<0:8>>).
+    pack(10003, <<0:8>>);
+
+write(10005, _NoUse) ->
+    pack(10005, <<0:8>>);
+
+write(11001, SceneID) ->
+    pack(11001, <<SceneID:16>>);
+
+write(16000, Str) ->
+    Payload = write_string(Str),
+    pack(16000, Payload);
+
+write(guard, _) ->
+    guard.
 
 
 str_md5(L) ->

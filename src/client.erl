@@ -29,6 +29,8 @@
         handle_info({inet_async, _Socket, Ref, {ok, <<Len:16, Cmd:16>>}}, 
                     StateName, #state{recv_ref = Ref} = State)).
 
+-define(HEARTBEAT_TIMEOUT, 60000).
+
 -record(state, {
     client_id = 0,
     server = {"", 0},       % {ServerIP, ServerPort}
@@ -144,12 +146,20 @@ handle_info(login, connected, State) ->
 ?handle_server_info(wait_for_enter_reply, 10003) ->
     InPacket = read_msg_body(State, Len, 10003),
 	{ok, {RoleID, _Name, SceneID, X, Y}} = pt:read(10003, InPacket),
+    ?I("RoleID = ~w, Name = ~ts, SceneID = ~w, X = ~w, Y = ~w",
+       [RoleID, _Name, SceneID, X, Y]),
     NState0 = State#state{
         role_id = RoleID,
         scene_id = SceneID,
         x = X,
         y = Y
     },
+
+    scene:enter(SceneID),
+    HeartbeatTimerRef = 
+        msg_timer:schedule_timer(none, ?HEARTBEAT_TIMEOUT, timer_heartbeat),
+    erlang:put(heartbeat_timer_ref, HeartbeatTimerRef),
+
     NState = async_recv(NState0),
     ?SINFO(running),
     {next_state, running, NState};
@@ -157,8 +167,18 @@ handle_info(login, connected, State) ->
 ?handle_server_info(running) ->
     InPacket = read_msg_body(State, Len, Cmd),
     ?I("Received Len = ~w, Cmd = ~w, InPacket = ~w", [Len, Cmd, InPacket]),
-    NState = async_recv(State, ?RECV_TIMEOUT),
+    NState = async_recv(State, -1),
     {next_state, running, NState};
+
+handle_info(timer_heartbeat, running, State) ->
+    ?I("Heartbeat triggered"),
+    Packet = pt:write(10005, 0),
+    sender:send(Packet),
+    NewTimerRef = 
+        msg_timer:schedule_timer(erlang:get(heartbeat_timer_ref),
+                                 ?HEARTBEAT_TIMEOUT, timer_heartbeat),
+    erlang:put(heartbeat_timer_ref, NewTimerRef),
+    {next_state, running, State};
 
 handle_info(stop, _StateName, State) ->
     ?I("'stop' received in state ~w", [_StateName]),
