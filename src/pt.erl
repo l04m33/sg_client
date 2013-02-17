@@ -12,8 +12,9 @@ route(<<ProtoID:16, Rest/binary>>) ->
     read(ProtoID, Rest).
 
 pack(ProtoID, Payload) ->
+    Len = byte_size(Payload) + 6,
     Seq = sender:get_and_rotate_seq(),
-    <<ProtoID:16, Seq:16, Payload/binary>>.
+    <<Len:16, ProtoID:16, Seq:16, Payload/binary>>.
 
 write_string(Str) ->
 	BinStr = list_to_binary(Str),
@@ -66,7 +67,7 @@ write(10002, {RoleID, RoleName}) ->
     pack(10002, Payload);
 
 write(10003, _NoUse) ->
-    pack(10002, <<0:8>>).
+    pack(10003, <<0:8>>).
 
 
 str_md5(L) ->

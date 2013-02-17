@@ -50,7 +50,7 @@ handle_info({spawn_client, ServerIP, ServerPort}, State) ->
     ?I("Spawning client, ID = ~w", [ID]),
     supervisor:start_child(client_sup, 
                            {ID, {client, start_link, [ID, ServerIP, ServerPort]}, 
-                            transient, 5000, worker, [client]}),
+                            temporary, 5000, worker, [client]}),
     {noreply, State#state{id_seq = ID}}.
 
 terminate(_Reason, _State) ->

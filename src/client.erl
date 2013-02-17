@@ -21,6 +21,14 @@
          handle_sync_event/4, handle_info/3, terminate/3,
          code_change/4]).
 
+-define(handle_server_info(StateName, Cmd), 
+        handle_info({inet_async, _Socket, Ref, {ok, <<Len:16, Cmd:16>>}}, 
+                    StateName, #state{recv_ref = Ref} = State)).
+
+-define(handle_server_info(StateName), 
+        handle_info({inet_async, _Socket, Ref, {ok, <<Len:16, Cmd:16>>}}, 
+                    StateName, #state{recv_ref = Ref} = State)).
+
 -record(state, {
     client_id = 0,
     server = {"", 0},       % {ServerIP, ServerPort}
@@ -30,7 +38,8 @@
     role_id = 0,
     scene_id = 0,
     x = 0,
-    y = 0}).
+    y = 0,
+    recv_ref = 0}).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -53,11 +62,13 @@ init([ID, ServerIP, ServerPort]) ->
 
     ?I("Client started, ServerIP = ~s, ServerPort = ~w", [ServerIP, ServerPort]),
     self() ! connect,
+    ?SINFO(idle),
     {ok, idle, NState}.
 
 
 wait_for_login_reply(timeout, State) ->
     self() ! {stop, login_timed_out},
+    ?SINFO(disconnected),
     {next_state, disconnected, State}.
 
 
@@ -71,16 +82,18 @@ handle_sync_event(_Event, _From, StateName, State) ->
 handle_info(connect, idle, State) ->
     ?I("Connecting...."),
     {IP, Port} = State#state.server,
-	case gen_tcp:connect(IP, Port, [binary, {packet, 2}, {active, true}]) of
+	case gen_tcp:connect(IP, Port, [binary, {packet, 0}, {active, false}]) of
         {ok, Socket} ->
             sender:init_sender(Socket),
             NState = State#state{socket = Socket},
             self() ! login,
+            ?SINFO(connected),
             {next_state, connected, NState};
         {error, Reason} ->
             ?E("Client ~w failed to connect, IP = ~s, Port = ~w, Reason = ~w",
                [State#state.client_id, IP, Port, Reason]),
             self() ! {stop, Reason},
+            ?SINFO(disconnected),
             {next_state, disconnected, State}
     end;
 
@@ -88,48 +101,64 @@ handle_info(login, connected, State) ->
     Account = State#state.player_account,
     Packet = pt:write(10000, Account),
     sender:send(Packet),
-    {next_state, wait_for_login_reply, State, 5000};
+    NState = async_recv(State),
+    ?SINFO(wait_for_login_reply),
+    {next_state, wait_for_login_reply, NState, 5000};
 
-handle_info({tcp, _Socket, InPacket}, wait_for_login_reply, State) ->
+?handle_server_info(wait_for_login_reply, 10000) ->
+    InPacket = read_msg_body(State, Len, 10000),
     {ok, {Stat, PlayerID}} = pt:read(10000, InPacket),
     case Stat of
         2 ->        % login success
             Packet = pt:write(10003, 0),
             sender:send(Packet),
-            {next_state, wait_for_enter_reply, State#state{player_id = PlayerID}};
+            NState = async_recv(State),
+            ?SINFO(wait_for_enter_reply),
+            {next_state, wait_for_enter_reply, NState#state{player_id = PlayerID}};
         1 ->        % create new role
             NRoleID = rand_server:rand(1, 6),
+            ?I("New role ID: ~w", [NRoleID]),
             Packet = pt:write(10002, {NRoleID, State#state.player_account}),
             sender:send(Packet),
-            {next_state, wait_for_create_role_reply, State};
+            NState = async_recv(State),
+            ?SINFO(wait_for_create_role_reply),
+            {next_state, wait_for_create_role_reply, NState};
         Other ->
             exit({unknown_stat_from_server, Other})
     end;
 
-handle_info({tcp, _Socket, InPacket}, wait_for_create_role_reply, State) ->
+?handle_server_info(wait_for_create_role_reply, 10002) ->
+    InPacket = read_msg_body(State, Len, 10002),
     {ok, {Stat, PlayerID}} = pt:read(10002, InPacket),
     case Stat of
         0 ->        % creation success
             Packet = pt:write(10003, 0),
             sender:send(Packet),
-            {next_state, wait_for_enter_reply, State#state{player_id = PlayerID}};
+            NState = async_recv(State),
+            ?SINFO(wait_for_enter_reply),
+            {next_state, wait_for_enter_reply, NState#state{player_id = PlayerID}};
         Other ->
             exit({unknown_stat_from_server, Other})
     end;
 
-handle_info({tcp, _Socket, InPacket}, wait_for_enter_reply, State) ->
-	{ok, {RoleID, _Name, SceneID, X, Y}} = InPacket,
-    NState = State#state{
+?handle_server_info(wait_for_enter_reply, 10003) ->
+    InPacket = read_msg_body(State, Len, 10003),
+	{ok, {RoleID, _Name, SceneID, X, Y}} = pt:read(10003, InPacket),
+    NState0 = State#state{
         role_id = RoleID,
         scene_id = SceneID,
         x = X,
         y = Y
     },
+    NState = async_recv(NState0),
+    ?SINFO(running),
     {next_state, running, NState};
 
-handle_info({tcp, _Socket, InPacket}, running, State) ->
-    ?I("Received InPacket = ~w", [InPacket]),
-    {next_state, running, State};
+?handle_server_info(running) ->
+    InPacket = read_msg_body(State, Len, Cmd),
+    ?I("Received Len = ~w, Cmd = ~w, InPacket = ~w", [Len, Cmd, InPacket]),
+    NState = async_recv(State, ?RECV_TIMEOUT),
+    {next_state, running, NState};
 
 handle_info(stop, _StateName, State) ->
     ?I("'stop' received in state ~w", [_StateName]),
@@ -139,7 +168,11 @@ handle_info({stop, Reason}, _StateName, State) ->
     ?I("'stop' received in state ~w, Reason = ~w", [_StateName, Reason]),
     {stop, Reason, State};
 
+handle_info({inet_async, _Socket, _Ref, {error, ErrReason}}, _StateName, State) ->
+    {stop, {socket_error, ErrReason}, State};
+
 handle_info(_Info, StateName, State) ->
+    ?E("received in state ~w: ~w", [StateName, _Info]),
     {next_state, StateName, State}.
 
 
@@ -152,4 +185,35 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+
+async_recv(State) ->
+    Ref = async_recv(State#state.socket, ?HEADER_LENGTH, ?RECV_TIMEOUT),
+    State#state{recv_ref = Ref}.
+
+async_recv(State, Timeout) ->
+    Ref = async_recv(State#state.socket, ?HEADER_LENGTH, Timeout),
+    State#state{recv_ref = Ref}.
+
+async_recv(Sock, Length, Timeout) ->
+    case prim_inet:async_recv(Sock, Length, Timeout) of
+        {error, Reason} -> 
+			?E("~w", [Reason]),
+            exit({socket_error, Reason});
+        {ok, Res} -> 
+            Res
+    end.
+
+read_msg_body(State, Len, _Cmd) ->
+    case Len > ?HEADER_LENGTH of
+        true ->
+            Ref = async_recv(State#state.socket, Len - ?HEADER_LENGTH, ?RECV_TIMEOUT),
+            receive 
+                {inet_async, _, Ref, {ok, Body}} ->
+                    Body;
+                _Other ->
+                    exit({socket_error, _Other})
+            end;
+        _ ->        % false
+            <<>>
+    end.
 

@@ -9,6 +9,8 @@
 -define(W(Fmt, Args), error_logger:warning_msg("~s:~w: " ++ Fmt ++ "~n", [?MODULE, ?LINE | Args])).
 -define(W(Fmt),       ?W(Fmt, [])).
 
+-define(SINFO(StateName), ?I("going to state '~w'", [StateName])).
+
 -else.
 
 -define(I(Fmt, Args), ok).
