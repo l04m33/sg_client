@@ -19,6 +19,8 @@
 -define(W(Fmt, Args), ok).
 -define(W(Fmt),       ok).
 
+-define(SINFO(StateName), ok).
+
 -endif.
 
 -define(E(Fmt, Args),  error_logger:error_msg("~s:~w: " ++ Fmt ++ "~n", [?MODULE, ?LINE | Args])).

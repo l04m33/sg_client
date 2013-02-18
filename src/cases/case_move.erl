@@ -15,8 +15,7 @@ prepare(State) ->
     RandX = rand_server:rand(1, SceneInfo#scene.column - 1),
     RandY = rand_server:rand(1, SceneInfo#scene.row - 1),
     {NX, NY} = scene:get_movable_point(SceneID, RandX, RandY),
-    %gm:jump_to(SceneID, NX, NY),
-    gm:jump_to(SceneID, 38, 35),
+    gm:jump_to(SceneID, NX, NY),
     {ok, State#state{case_state = no_use}}.
 
 
@@ -37,10 +36,10 @@ handle_timer(State, _NoUse) ->
     SceneInfo = data_scene:get(SceneID),
     RandX = 
         min(max(1, X + rand_server:rand(-1 * 7, 1 * 7)), 
-            SceneInfo#scene.column),
+            SceneInfo#scene.column - 1),
     RandY = 
         min(max(1, Y + rand_server:rand(-1 * 7, 1 * 7)), 
-            SceneInfo#scene.row),
+            SceneInfo#scene.row - 1),
     case scene:can_move(SceneID, RandX, RandY) of
         true ->
             MovePacket = pt:write(11000, [{X, Y}, {RandX, RandY}]),

@@ -147,11 +147,13 @@ handle_info(login, connected, State) ->
 
 ?handle_server_info(wait_for_enter_reply, 10003) ->
     InPacket = read_msg_body(State, Len, 10003),
-	{ok, {RoleID, _Name, SceneID, X, Y}} = pt:read(10003, InPacket),
+	{ok, {RoleID, _Name, SceneID, X, Y, RoleLevel}} = 
+        pt:read(10003, InPacket),
     ?I("RoleID = ~w, Name = ~ts, SceneID = ~w, X = ~w, Y = ~w",
        [RoleID, _Name, SceneID, X, Y]),
     NState0 = State#state{
         role_id = RoleID,
+        role_level = RoleLevel,
         scene_id = SceneID,
         x = X,
         y = Y
@@ -169,7 +171,7 @@ handle_info(login, connected, State) ->
 
 ?handle_server_info(running) ->
     InPacket = read_msg_body(State, Len, Cmd),
-    ?I("Received Len = ~w, Cmd = ~w, InPacket = ~w", [Len, Cmd, InPacket]),
+    %?I("Received Len = ~w, Cmd = ~w, InPacket = ~w", [Len, Cmd, InPacket]),
 
     Case = State#state.test_case,
     {ok, NState0} = Case:handle_server_msg(State, Cmd, InPacket),
@@ -242,9 +244,9 @@ read_msg_body(State, Len, _Cmd) ->
             Ref = async_recv(State#state.socket, Len - ?HEADER_LENGTH, ?RECV_TIMEOUT),
             receive 
                 {inet_async, _, Ref, {ok, Body}} ->
-                    Body;
-                _Other ->
-                    exit({socket_error, _Other})
+                    Body
+            after ?RECV_TIMEOUT ->
+                exit({socket_error, recv_timeout})
             end;
         _ ->        % false
             <<>>

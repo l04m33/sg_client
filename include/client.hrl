@@ -15,6 +15,7 @@
     player_account = "",
     player_id = 0,
     role_id = 0,
+    role_level = 0,
     scene_id = 0,
     x = 0,
     y = 0,
