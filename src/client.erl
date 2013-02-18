@@ -15,6 +15,10 @@
 %% gen_fsm Function Exports
 %% ------------------------------------------------------------------
 
+-export([
+    case_timer/3, 
+    cancel_case_timer/1]).
+
 -export([wait_for_login_reply/2]).
 
 -export([init/1, handle_event/3,
@@ -34,6 +38,15 @@
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
+
+case_timer(CaseName, Timeout, Context) ->
+    NRef = msg_timer:schedule_timer(erlang:get({CaseName, timer}), 
+                                    Timeout, {timer_case, Context}),
+    erlang:put({CaseName, timer}, NRef).
+
+cancel_case_timer(CaseName) ->
+    msg_timer:cancel_timer(erlang:get({CaseName, timer})),
+    erlang:erase({CaseName, timer}).
 
 start_link(ID, ServerIP, ServerPort, TestCase) ->
     gen_fsm:start_link(?MODULE, [ID, ServerIP, ServerPort, TestCase], []).
@@ -157,7 +170,11 @@ handle_info(login, connected, State) ->
 ?handle_server_info(running) ->
     InPacket = read_msg_body(State, Len, Cmd),
     ?I("Received Len = ~w, Cmd = ~w, InPacket = ~w", [Len, Cmd, InPacket]),
-    NState = async_recv(State, -1),
+
+    Case = State#state.test_case,
+    {ok, NState0} = Case:handle_server_msg(State, Cmd, InPacket),
+
+    NState = async_recv(NState0, -1),
     {next_state, running, NState};
 
 handle_info(timer_heartbeat, running, State) ->
@@ -169,6 +186,12 @@ handle_info(timer_heartbeat, running, State) ->
                                  ?HEARTBEAT_TIMEOUT, timer_heartbeat),
     erlang:put(heartbeat_timer_ref, NewTimerRef),
     {next_state, running, State};
+
+handle_info({timer_case, Context}, running, State) ->
+    ?I("timer_case triggered, Context = ~w", [Context]),
+    Case = State#state.test_case,
+    {ok, NState} = Case:handle_timer(State, Context),
+    {next_state, running, NState};
 
 handle_info(stop, _StateName, State) ->
     ?I("'stop' received in state ~w", [_StateName]),
@@ -230,8 +253,8 @@ read_msg_body(State, Len, _Cmd) ->
 init_case(State) ->
     Case = State#state.test_case,
     case Case:prepare(State) of
-        {ok, CaseState} ->
-            State#state{case_state = CaseState};
+        {ok, NState} ->
+            NState;
         _Other ->
             exit({case_prepare_failed, _Other})
     end.

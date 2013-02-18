@@ -5,6 +5,9 @@
 
 -export([route/1,
          pack/2,
+         write_string/1,
+         read_string/1,
+         write_pos_list/1,
          read/2,
          write/2]).
 
@@ -34,6 +37,14 @@ read_string(Bin) ->
             {[],<<>>}
     end.
 
+write_pos_list(PosList) ->
+    write_pos_list(PosList, <<>>, 0).
+
+write_pos_list([{X, Y} | Rest], AccBin, Len) ->
+    write_pos_list(Rest, <<AccBin/binary, X:16, Y:16>>, Len + 1);
+write_pos_list([], AccBin, Len) ->
+    <<Len:16, AccBin/binary>>.
+
 
 read(10000, <<Stat:8, PlayerID:32>>) ->
     {ok, {Stat, PlayerID}};
@@ -45,6 +56,9 @@ read(10003, <<RoleID:32, Rest/binary>>) ->
 	{Name, Bin} = read_string(Rest),
 	<<SceneID:16, X:16, Y:16, _/binary>> = Bin,
 	{ok, {RoleID, Name, SceneID, X, Y}};
+
+read(11004, <<SceneID:16, X:16, Y:16>>) ->
+    {ok, {SceneID, X, Y}};
 
 read(guard, _) ->
     guard.
@@ -75,8 +89,15 @@ write(10003, _NoUse) ->
 write(10005, _NoUse) ->
     pack(10005, <<0:8>>);
 
+write(11000, PosList) ->
+    Payload = write_pos_list(PosList),
+    pack(11000, Payload);
+
 write(11001, SceneID) ->
     pack(11001, <<SceneID:16>>);
+
+write(11003, {X, Y}) ->
+    pack(11003, <<X:16, Y:16>>);
 
 write(16000, Str) ->
     Payload = write_string(Str),
