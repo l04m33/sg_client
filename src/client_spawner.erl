@@ -8,7 +8,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/0, spawn_client/2]).
+-export([start_link/0, spawn_client/3]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -27,8 +27,8 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-spawn_client(ServerIP, ServerPort) ->
-    ?SERVER ! {spawn_client, ServerIP, ServerPort},
+spawn_client(ServerIP, ServerPort, Case) ->
+    ?SERVER ! {spawn_client, ServerIP, ServerPort, Case},
     ok.
 
 %% ------------------------------------------------------------------
@@ -45,11 +45,11 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({spawn_client, ServerIP, ServerPort}, State) ->
+handle_info({spawn_client, ServerIP, ServerPort, Case}, State) ->
     ID = State#state.id_seq + 1,
     ?I("Spawning client, ID = ~w", [ID]),
     supervisor:start_child(client_sup, 
-                           {ID, {client, start_link, [ID, ServerIP, ServerPort]}, 
+                           {ID, {client, start_link, [ID, ServerIP, ServerPort, Case]}, 
                             temporary, 5000, worker, [client]}),
     {noreply, State#state{id_seq = ID}}.
 

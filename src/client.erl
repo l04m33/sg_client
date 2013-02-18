@@ -9,7 +9,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/3]).
+-export([start_link/4]).
 
 %% ------------------------------------------------------------------
 %% gen_fsm Function Exports
@@ -31,35 +31,24 @@
 
 -define(HEARTBEAT_TIMEOUT, 60000).
 
--record(state, {
-    client_id = 0,
-    server = {"", 0},       % {ServerIP, ServerPort}
-    socket = undefined,
-    player_account = "",
-    player_id = 0,
-    role_id = 0,
-    scene_id = 0,
-    x = 0,
-    y = 0,
-    recv_ref = 0}).
-
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
 
-start_link(ID, ServerIP, ServerPort) ->
-    gen_fsm:start_link(?MODULE, [ID, ServerIP, ServerPort], []).
+start_link(ID, ServerIP, ServerPort, TestCase) ->
+    gen_fsm:start_link(?MODULE, [ID, ServerIP, ServerPort, TestCase], []).
 
 %% ------------------------------------------------------------------
 %% gen_fsm Function Definitions
 %% ------------------------------------------------------------------
 
-init([ID, ServerIP, ServerPort]) ->
+init([ID, ServerIP, ServerPort, TestCase]) ->
     erlang:process_flag(trap_exit, true),
     NState = #state{
         client_id = ID, 
         server = {ServerIP, ServerPort},
-        player_account = ?CLIENT_ACCOUNT_PREFIX ++ integer_to_list(ID)
+        player_account = ?CLIENT_ACCOUNT_PREFIX ++ integer_to_list(ID),
+        test_case = TestCase
     },
 
     ?I("Client started, ServerIP = ~s, ServerPort = ~w", [ServerIP, ServerPort]),
@@ -160,7 +149,8 @@ handle_info(login, connected, State) ->
         msg_timer:schedule_timer(none, ?HEARTBEAT_TIMEOUT, timer_heartbeat),
     erlang:put(heartbeat_timer_ref, HeartbeatTimerRef),
 
-    NState = async_recv(NState0),
+    NState1 = async_recv(NState0),
+    NState = init_case(NState1),
     ?SINFO(running),
     {next_state, running, NState};
 
@@ -235,5 +225,14 @@ read_msg_body(State, Len, _Cmd) ->
             end;
         _ ->        % false
             <<>>
+    end.
+
+init_case(State) ->
+    Case = State#state.test_case,
+    case Case:prepare(State) of
+        {ok, CaseState} ->
+            State#state{case_state = CaseState};
+        _Other ->
+            exit({case_prepare_failed, _Other})
     end.
 
