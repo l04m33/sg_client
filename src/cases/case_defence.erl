@@ -22,8 +22,7 @@ prepare(State) ->
     RandX = rand_server:rand(1, SceneInfo#scene.column - 1),
     RandY = rand_server:rand(1, SceneInfo#scene.row - 1),
     {NX, NY} = scene:get_movable_point(?DEFENCE_SCENE_ID, RandX, RandY),
-    %gm:jump_to(?DEFENCE_SCENE_ID, NX, NY),
-    gm:jump_to(?DEFENCE_SCENE_ID, 291, 35),
+    gm:jump_to(?DEFENCE_SCENE_ID, NX, NY),
     {ok, State#state{case_state = prepared}}.
 
 
