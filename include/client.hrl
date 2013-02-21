@@ -2,8 +2,8 @@
 -define(__CLIENT_HRL__, true).
 
 -define(CLIENT_ACCOUNT_PREFIX, "k_bot_").
--define(SERVER_KEY, "hlsy").
--define(SERVER_NAME, "S1").
+-define(SERVER_KEY, client:get_opt(server_key)).
+-define(SERVER_NAME, client:get_opt(server_name)).
 
 -define(HEADER_LENGTH, 4).
 -define(RECV_TIMEOUT, 5000).

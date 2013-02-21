@@ -27,5 +27,6 @@ init([]) ->
     {ok, {{one_for_one, 5, 10}, 
           [?CHILD(client_sup, supervisor),
            ?CHILD(rand_server, worker),
-           ?CHILD(client_spawner, worker)]}}.
+           ?CHILD(client_spawner, worker),
+           ?CHILD(client_runner, worker)]}}.
 

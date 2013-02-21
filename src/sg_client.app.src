@@ -7,6 +7,15 @@
                   kernel,
                   stdlib
                  ]},
-  {mod, { sg_client_app, []}},
-  {env, []}
+  {mod, {sg_client_app, []}},
+  {env, [
+         {server_ip, "192.168.24.198"},
+         {server_port, 10000},
+         {server_name, "S1"},
+         {server_key, "hlsy"},
+         {test_case, case_defence},
+         {spawn_interval, 200},
+         {client_num, 200}
+        ]}
  ]}.
+

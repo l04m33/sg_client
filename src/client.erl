@@ -16,6 +16,7 @@
 %% ------------------------------------------------------------------
 
 -export([
+    get_opt/1,
     case_timer/3, 
     cancel_case_timer/1]).
 
@@ -38,6 +39,10 @@
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
+
+get_opt(Key) ->
+    {ok, Val} = application:get_env(Key),
+    Val.
 
 case_timer(CaseName, Timeout, Context) ->
     NRef = msg_timer:schedule_timer(erlang:get({CaseName, timer}), 

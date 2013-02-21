@@ -17,7 +17,12 @@ prepare(State) ->
         true  -> void;
         false -> gm:add_exp(State#state.role_id, 10000000)
     end,
-    gm:alter_att_and_hp(State#state.role_id, 200000, 20000000),
+    gm:alter_att_and_hp(State#state.role_id, 5000, 20000000),
+
+    %% Wait some time to randomize the robot operations
+    RandWaitTime = rand_server:rand(1, 10000),
+    receive after RandWaitTime -> ok end,
+
     SceneInfo = data_scene:get(?DEFENCE_SCENE_ID),
     RandX = rand_server:rand(1, SceneInfo#scene.column - 1),
     RandY = rand_server:rand(1, SceneInfo#scene.row - 1),
@@ -58,13 +63,15 @@ handle_server_msg(State, 10999, _Packet) ->
 handle_server_msg(State, 20000, _Packet) ->
     ReadyPacket = pt:write(20000, 0),
     sender:send(ReadyPacket),
-    client:case_timer(case_defence, 1000, fight_monster),
+    client:case_timer(case_defence, 2000, fight_monster),
     {ok, State#state{case_state = fighting}};
 
 handle_server_msg(State, 20005, _Packet) ->
     ?I("Battle ended...."),
     case State#state.case_state of
         fighting ->
+            receive after 1000 -> ok end,
+
             QuitPacket = pt:write(20008, 0),
             sender:send(QuitPacket),
             client:case_timer(case_defence, 2000, request_mon_coord),
@@ -85,7 +92,7 @@ handle_server_msg(State, _Cmd, _Packet) ->
 handle_timer(State, request_mon_coord) ->
     Packet = pt:write(40007, 0),
     sender:send(Packet),
-    client:case_timer(case_defence, 2000, request_mon_coord),
+    client:case_timer(case_defence, 3000, request_mon_coord),
     {ok, State};
 
 handle_timer(State, fight_monster) ->
@@ -95,7 +102,7 @@ handle_timer(State, fight_monster) ->
     sender:send(FinishPacket),
     FinishPacket1 = pt:write(20001, 0),
     sender:send(FinishPacket1),
-    client:case_timer(case_defence, 1000, fight_monster),
+    client:case_timer(case_defence, 2000, fight_monster),
     {ok, State}.
 
 
