@@ -248,8 +248,10 @@ read_msg_body(State, Len, _Cmd) ->
         true ->
             Ref = async_recv(State#state.socket, Len - ?HEADER_LENGTH, ?RECV_TIMEOUT),
             receive 
-                {inet_async, _, Ref, {ok, Body}} ->
-                    Body
+                {inet_async, _Socket, Ref, {ok, Body}} ->
+                    Body;
+                {inet_async, _Socket, _Ref, {error, ErrReason}} ->
+                    exit({socket_error, ErrReason})
             after ?RECV_TIMEOUT ->
                 exit({socket_error, recv_timeout})
             end;
