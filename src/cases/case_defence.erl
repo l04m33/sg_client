@@ -17,7 +17,7 @@ prepare(State) ->
         true  -> void;
         false -> gm:add_exp(State#state.role_id, 10000000)
     end,
-    gm:alter_att_and_hp(State#state.role_id, 5000, 20000000),
+    gm:alter_att_and_hp(State#state.role_id, 20000, 20000000),
 
     %% Wait some time to randomize the robot operations
     RandWaitTime = rand_server:rand(1, 10000),

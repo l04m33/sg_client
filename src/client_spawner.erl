@@ -8,7 +8,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/0, spawn_client/3]).
+-export([start_link/0, start_link/1, spawn_client/3]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -25,7 +25,10 @@
 %% ------------------------------------------------------------------
 
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [0], []).
+
+start_link(StartSeq) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [StartSeq], []).
 
 spawn_client(ServerIP, ServerPort, Case) ->
     ?SERVER ! {spawn_client, ServerIP, ServerPort, Case},
@@ -35,9 +38,9 @@ spawn_client(ServerIP, ServerPort, Case) ->
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 
-init([]) ->
+init([StartSeq]) ->
     erlang:process_flag(trap_exit, true),
-    {ok, #state{}}.
+    {ok, #state{id_seq = StartSeq}}.
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.

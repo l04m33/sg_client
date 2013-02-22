@@ -13,9 +13,10 @@
          {server_port, 10000},
          {server_name, "S1"},
          {server_key, "hlsy"},
-         {test_case, case_defence},
+         {test_case, case_move},
          {spawn_interval, 200},
-         {client_num, 200}
+         {start_seq, 0},
+         {client_num, 400}
         ]}
  ]}.
 
