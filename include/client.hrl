@@ -1,7 +1,7 @@
 -ifndef(__CLIENT_HRL__).
 -define(__CLIENT_HRL__, true).
 
--define(CLIENT_ACCOUNT_PREFIX, "k_bot_").
+-define(CLIENT_ACCOUNT_PREFIX, client:get_opt(account_prefix)).
 -define(SERVER_KEY, client:get_opt(server_key)).
 -define(SERVER_NAME, client:get_opt(server_name)).
 
