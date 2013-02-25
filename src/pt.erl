@@ -54,7 +54,7 @@ read(10002, <<Stat:8, PlayerID:32>>) ->
 
 read(10003, <<RoleID:32, Rest/binary>>) ->
 	{Name, Bin} = read_string(Rest),
-	<<SceneID:16, X:16, Y:16, _:640, RoleLevel:16>> = Bin,
+	<<SceneID:16, X:16, Y:16, _:672, RoleLevel:16>> = Bin,
 	{ok, {RoleID, Name, SceneID, X, Y, RoleLevel}};
 
 read(11004, <<SceneID:16, X:16, Y:16>>) ->
