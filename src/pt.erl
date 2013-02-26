@@ -60,6 +60,9 @@ read(10003, <<RoleID:32, Rest/binary>>) ->
 read(11004, <<SceneID:16, X:16, Y:16>>) ->
     {ok, {SceneID, X, Y}};
 
+read(11008, <<PlayerID:32, X:16, Y:16>>) ->
+    {ok, {PlayerID, X, Y}};
+
 read(40007, <<MonID:32, MonX:16, MonY:16>>) ->
     {ok, {MonID, MonX, MonY}};
 
@@ -115,6 +118,9 @@ write(20000, _NoUse) ->
 write(20001, Cmd) ->
     pack(20001, <<Cmd:32>>);
 
+write(20002, _NoUse) ->
+    pack(20002, <<0:8>>);
+
 write(20007, _NoUse) ->
     pack(20007, <<0:8>>);
 
@@ -123,6 +129,9 @@ write(20008, _NoUse) ->
 
 write(20100, MonID) ->
     pack(20100, <<MonID:32>>);
+
+write(37001, NPCID) ->
+    pack(37001, <<NPCID:16>>);
 
 write(40007, _NoUse) ->
     pack(40007, <<0:8>>);
