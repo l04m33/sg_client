@@ -133,6 +133,9 @@ write(20100, MonID) ->
 write(37001, NPCID) ->
     pack(37001, <<NPCID:16>>);
 
+write(37005, _NoUse) ->
+    pack(37005, <<_NoUse:8>>);
+
 write(40007, _NoUse) ->
     pack(40007, <<0:8>>);
 

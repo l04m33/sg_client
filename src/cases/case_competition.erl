@@ -77,6 +77,11 @@ handle_server_msg(State, 37007, _Packet) ->
     client:case_timer(case_competition, 2000, auto_comp),
     {ok, State#state{case_state = waiting_for_fight}};
 
+handle_server_msg(State, 37020, _Packet) ->
+    LeavePacket = pt:write(37005, 0),
+    sender:send(LeavePacket),
+    {ok, State#state{case_state = comp_ended}};
+
 handle_server_msg(State, _Cmd, _Packet) ->
     {ok, State}.
 
