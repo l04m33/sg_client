@@ -17,6 +17,7 @@
 
 -export([
     get_opt/1,
+    get_case_opt/1,
     case_timer/3, 
     cancel_case_timer/1]).
 
@@ -42,6 +43,11 @@
 
 get_opt(Key) ->
     {ok, Val} = application:get_env(Key),
+    Val.
+
+get_case_opt(Key) ->
+    CaseOpts = get_opt(case_params),
+    {_, Val} = lists:keyfind(Key, 1, CaseOpts),
     Val.
 
 case_timer(CaseName, Timeout, Context) ->

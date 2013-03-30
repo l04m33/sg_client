@@ -1,3 +1,8 @@
+%%
+%% Available params:
+%%   scene_id :: integer(), the scene in which the robots move
+%%
+
 -module(case_move).
 
 -include("client.hrl").
@@ -10,7 +15,7 @@
     handle_timer/2]).
 
 prepare(State) ->
-    SceneID = State#state.scene_id,
+    SceneID = client:get_case_opt(scene_id),
     SceneInfo = data_scene:get(SceneID),
     RandX = rand_server:rand(1, SceneInfo#scene.column - 1),
     RandY = rand_server:rand(1, SceneInfo#scene.row - 1),
